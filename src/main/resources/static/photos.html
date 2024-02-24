@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Gallery</title>
+    <style>
+        /* Navbar styles */
+        body{
+              font-family:  Helvetica, Arial,sans-serif;
+        }
+        .navbar {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar-brand {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .navbar-links a {
+            color: white;
+            text-decoration: none;
+            margin-right: 10px;
+        }
+        /* Body styles */
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            margin-bottom: 60px;
+
+        }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+
+        }
+        .photo {
+            position: relative;
+            overflow: hidden;
+             border-radius: 14px;
+               border: 1px solid grey;
+        }
+        .photo img {
+            max-width: 100%;
+            height: auto;
+            transition: transform 0.3s ease;
+              border-radius: 14px;
+        }
+        .photo:hover img {
+            transform: scale(1.1);
+        }
+        .my-btn {
+<!--            position: absolute;-->
+            top: 140%;
+<!--            left: 10%;-->
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            margin-top: 20px;
+            margin-inline: 10px;
+            border-radius: 5px;
+            opacity: 0;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+            cursor: pointer;
+        }
+        .del-btn {
+                background-color:red;
+        }
+        .photo:hover .my-btn {
+            opacity: 1;
+        }
+        /* Footer styles */
+        .footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+
+        /* Loader styles */
+        .loader {
+            border: 16px solid #f3f3f3; /* Light grey */
+            border-top: 16px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<div class="navbar">
+    <div class="navbar-brand">Photos</div>
+    <div class="navbar-links">
+        <a href="/upload.html">Upload</a>
+
+        <a href="#">About</a>
+        <a href="#">Contact</a>
+    </div>
+</div>
+
+<!-- Loader -->
+<div class="loader" id="loader"></div>
+
+<!-- Body -->
+<div class="container">
+    <div class="photo-grid" id="photoGrid">
+        <!-- Photos will be displayed here -->
+    </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+    &copy; 2024 Photo Gallery
+</div>
+
+<script>
+    <!-- Updated JavaScript -->
+
+     // Function to delete the photo
+     function deletePhoto(photoId) {
+         fetch(`http://localhost:8090/photo/${photoId}`, {
+             method: 'DELETE'
+         })
+         .then(response => {
+             if (!response.ok) {
+                 throw new Error('Network response was not ok');
+             }
+             // Reload photos after successful delete
+             loadPhotos();
+         })
+         .catch(error => {
+             console.error('There was a problem deleting the photo:', error);
+         });
+     }
+
+     // Function to load photos
+     function loadPhotos() {
+         // Display loader until photos are fetched
+         document.getElementById('loader').style.display = 'block';
+
+         fetch('http://localhost:8090/photos')
+             .then(response => {
+                 if (!response.ok) {
+                     throw new Error('Network response was not ok');
+                 }
+                 return response.json();
+             })
+             .then(data => {
+                 // Hide loader
+                 document.getElementById('loader').style.display = 'none';
+
+                 // Get the photo grid container
+                 const photoGrid = document.getElementById('photoGrid');
+                 // Clear existing photos
+                 photoGrid.innerHTML = '';
+
+                 // Loop through each photo in the data
+                 data.forEach(photo => {
+                     // Create a new image element
+                     const img = document.createElement('img');
+
+                     // Set the src attribute of the image element
+                     img.src = `data:${photo.contentType};base64,${photo.data}`;
+
+                     // Create a new div for the photo
+                     const photoDiv = document.createElement('div');
+                     photoDiv.classList.add('photo');
+
+                     // Add image and download button to the photo div
+                     photoDiv.appendChild(img);
+
+                     // Hover effect to display download button and filename
+                     photoDiv.addEventListener('mouseenter', function() {
+                         downloadBtn.style.opacity = 1;
+                         deleteBtn.style.opacity = 1;
+                         fileName.style.opacity = 1;
+                     });
+                     photoDiv.addEventListener('mouseleave', function() {
+                         downloadBtn.style.opacity = 0;
+                         deleteBtn.style.opacity = 0;
+                         fileName.style.opacity = 0;
+                     });
+
+                     // Create download button
+                     const downloadBtn = document.createElement('button');
+                     downloadBtn.textContent = 'Download';
+                     downloadBtn.classList.add('my-btn');
+                     downloadBtn.onclick = function() {
+                         downloadImage(photo.data);
+                     };
+                     photoDiv.appendChild(downloadBtn);
+
+                     // Create delete button
+                     const deleteBtn = document.createElement('button');
+                     deleteBtn.textContent = 'Delete';
+                     deleteBtn.classList.add('my-btn');
+                     deleteBtn.classList.add('del-btn');
+                     deleteBtn.onclick = function() {
+                         deletePhoto(photo.id);
+                     };
+                     photoDiv.appendChild(deleteBtn);
+
+                     // Create filename element
+                     const fileName = document.createElement('p');
+                     fileName.textContent = photo.fileName;
+                     fileName.style.textAlign = 'left';
+                    fileName.style.fontSize = '14px';
+                    fileName.style.marginLeft = '14px';
+                     fileName.style.opacity = 0;
+                     photoDiv.appendChild(fileName);
+
+                     // Add the photo div to the photo grid
+                     photoGrid.appendChild(photoDiv);
+                 });
+             })
+             .catch(error => {
+                 console.error('There was a problem fetching the photos:', error);
+             });
+     }
+
+     // Load photos when the window is loaded
+     window.addEventListener('load', loadPhotos);
+
+
+</script>
+
+</body>
+</html>
